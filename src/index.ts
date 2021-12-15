@@ -1,6 +1,9 @@
+// @ts-ignore
+window.EventDelegate = (host: EventTarget, selector: string) => new EventDelegate(host, selector);
+
 class EventDelegate {
-    readonly host: EventTarget;
-    readonly selector: string;
+    host: EventTarget;
+    selector: string;
     protected eventName?: string;
     protected options?: boolean | AddEventListenerOptions;
     protected handler?: EventListener;
@@ -10,25 +13,26 @@ class EventDelegate {
         this.selector = selector;
     }
 
-    addEventListener(eventName: string, handler: EventListener, options?: boolean | AddEventListenerOptions) {
+    on(eventName: string, handler: EventListener, options?: boolean | AddEventListenerOptions) {
         this.eventName = eventName;
-        this.handler = function (ev: Event) {
-            for (let target: HTMLElement | null = <HTMLElement | null>ev.target; target && target != this.host; target = target.parentElement) {
-                if (target.matches(this.selector)) {
-                    handler.call(target, ev);
-                    break;
-                }
-            }
-        };
+        this.handler = handler;
         this.options = options;
 
-        this.host.addEventListener(this.eventName, this.handler, this.options);
+        this.host.addEventListener(this.eventName, this.shouldDelegate.bind(this), this.options);
     }
 
-    removeEventListener() {
+    off() {
         if (this.eventName && this.handler)
-            this.host.addEventListener(this.eventName, this.handler, this.options);
+            this.host.addEventListener(this.eventName, this.shouldDelegate.bind(this), this.options);
     }
-}
 
-window["EventDelegate"] = (host: EventTarget, selector: string) => new EventDelegate(host, selector);
+    shouldDelegate(ev: Event) {
+        if(!this.handler) return;
+        for (let target: HTMLElement | null = <HTMLElement | null>ev.target; target && target != this.host; target = target.parentElement) {
+            if (target.matches(this.selector)) {
+                this.handler.call(target, ev);
+                break;
+            }
+        }
+    };
+}
